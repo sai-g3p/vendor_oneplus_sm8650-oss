@@ -98,11 +98,15 @@ int OpticalCore::enrollDown() {
         const int uireadyRet = mContext->common()->waitUiready(kEnrollUireadyTimeoutMs);
         // A cancel wakes the wait so this worker can abort its TA state before
         // the cancellation signal acknowledges the framework. A timeout means
-        // the overlay never became ready; capturing outside that window only
-        // produces a bad frame and leaves the operation open.
-        if (uireadyRet != 0 || isCancelled()) {
+        // the touch was outside the sensor or lifted early; ignore it without
+        // closing the enrollment session so the next touch can retry.
+        if (isCancelled()) {
             mContext->perf().mark("abort");
             return abortEnroll(-1);
+        }
+        if (uireadyRet != 0) {
+            mContext->perf().mark("ui_timeout");
+            return 0;
         }
     }
     mContext->perf().mark("ui_wait");
